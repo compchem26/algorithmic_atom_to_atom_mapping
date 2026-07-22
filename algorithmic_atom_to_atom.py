@@ -1,5 +1,6 @@
 import io
 import streamlit as st
+import networkx as nx
 import matplotlib
 import textwrap
 matplotlib.use('Agg') # Ensures Matplotlib runs safely in a web thread without GUI popups
@@ -8,7 +9,6 @@ import numpy as np
 from PIL import Image
 from matplotlib.colors import ListedColormap
 from rdkit import Chem
-import networkx as nx
 from rdkit.Chem import rdDepictor
 
 # ==========================================
@@ -374,38 +374,58 @@ class VF2_MCS_Matcher:
     def _is_feasible(self, n, m):
         t1 = self.g1.nodes[n].get('type')
         t2 = self.g2.nodes[m].get('type')
-        if t1 != t2: return False, f"Element Mismatch: '{t1}' != '{t2}'"
+        if t1 != t2: return False, f"Semantic Fail: '{t1}' != '{t2}'"
         
         discrepancy_score = 0
         checked_pairs = set()
         
-        # 1. Check G1 edges against G2
+        # --- 1. CORE TOPOLOGY CHECK ---
+        # Check G1 edges against G2 for ALREADY MAPPED neighbors
         for n_neighbor in self.g1.neighbors(n):
             if n_neighbor in self.core_1:
                 m_neighbor = self.core_1[n_neighbor]
                 checked_pairs.add((n_neighbor, m_neighbor))
                 
                 if not self.g2.has_edge(m, m_neighbor):
-                    # The bond exists in Reactants but is missing in Products
                     discrepancy_score += self.g1[n][n_neighbor]['order']
                 else:
-                    # The bond exists in both, calculate the difference in order
                     o1 = self.g1[n][n_neighbor]['order']
                     o2 = self.g2[m][m_neighbor]['order']
                     discrepancy_score += abs(o1 - o2)
                     
-        # 2. Check G2 edges against G1 (for bonds formed in the products)
+        # Check G2 edges against G1 for ALREADY MAPPED neighbors
         for m_neighbor in self.g2.neighbors(m):
             if m_neighbor in self.core_2:
                 n_neighbor = self.core_2[m_neighbor]
-                # Only check if we haven't already evaluated this pair in the loop above
                 if (n_neighbor, m_neighbor) not in checked_pairs:
-                    # The bond exists in Products but is missing in Reactants
                     discrepancy_score += self.g2[m][m_neighbor]['order']
+
+        # --- 2. UNMAPPED NEIGHBORHOOD CHECK ---
+        # Tally the bond orders per atom type for UNMAPPED neighbors
+        unmapped_env_1 = {}
+        for n_neighbor in self.g1.neighbors(n):
+            if n_neighbor not in self.core_1:
+                ntype = self.g1.nodes[n_neighbor].get('type')
+                order = self.g1[n][n_neighbor]['order']
+                unmapped_env_1[ntype] = unmapped_env_1.get(ntype, 0) + order
+                
+        unmapped_env_2 = {}
+        for m_neighbor in self.g2.neighbors(m):
+            if m_neighbor not in self.core_2:
+                mtype = self.g2.nodes[m_neighbor].get('type')
+                order = self.g2[m][m_neighbor]['order']
+                unmapped_env_2[mtype] = unmapped_env_2.get(mtype, 0) + order
+                
+        # Compare the unmapped environments and add differences to the score
+        all_types = set(unmapped_env_1.keys()).union(set(unmapped_env_2.keys()))
+        for t in all_types:
+            o1 = unmapped_env_1.get(t, 0)
+            o2 = unmapped_env_2.get(t, 0)
+            discrepancy_score += abs(o1 - o2)
                     
-        # 3. Reject if the total discrepancy exceeds 1 change
+        # --- 3. FINAL VERDICT ---
         if discrepancy_score > 1.0:
-            return False, f"Structural Fail: Bond discrepancy score ({discrepancy_score}) exceeds limit of 1.0"
+            return False, f"Structural Fail: Total discrepancy ({discrepancy_score}) exceeds limit of 1.0"
             
         return True, "Valid"
 
