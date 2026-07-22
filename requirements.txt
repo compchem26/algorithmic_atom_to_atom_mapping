@@ -3,3 +3,4 @@ rdkit
 global-chem
 st-clickable-images
 networkx
+matplotlib
