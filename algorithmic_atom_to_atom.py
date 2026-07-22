@@ -1,6 +1,5 @@
 import io
 import streamlit as st
-import networkx as nx
 import matplotlib
 import textwrap
 matplotlib.use('Agg') # Ensures Matplotlib runs safely in a web thread without GUI popups
@@ -9,6 +8,7 @@ import numpy as np
 from PIL import Image
 from matplotlib.colors import ListedColormap
 from rdkit import Chem
+import networkx as nx
 from rdkit.Chem import rdDepictor
 
 # ==========================================
