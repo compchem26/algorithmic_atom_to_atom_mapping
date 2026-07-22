@@ -2,4 +2,4 @@ streamlit
 rdkit
 global-chem
 st-clickable-images
-spaces
+networkx
