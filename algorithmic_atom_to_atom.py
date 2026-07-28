@@ -534,7 +534,7 @@ class HybridReactionMapper:
         self.viz = viz if viz else ReactionVisualizer(self.g1, self.g2, pos1, pos2)
         
     def map_reaction(self):
-        self.viz.record_state("PHASE 1: Finding Maximum Common Substructure (MCS) Scaffold", "Starting Search...", {}, "MCS Best Size so far: 0")
+        self.viz.record_state("PHASE 1: Finding Maximum Common Substructure (MCS) Scaffold", "Start searching by moving the slider...", {}, "MCS Best Size so far: 0")
         mcs_matcher = VF2_MCS_Matcher(self.g1, self.g2, self.viz)
         scaffold_mapping = mcs_matcher.find_mcs()
         
